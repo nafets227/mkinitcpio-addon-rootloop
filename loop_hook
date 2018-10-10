@@ -1,23 +1,28 @@
 run_hook() {
     case $root in
     *@*)
-        rootpart=${root%%@*}
+        rootpart=$(resolve_device "${root%%@*}")
         rootimg=${root#*@}
 
-        mkdir /new_rootpart
+        mkdir /rootpart
         if [ "$partfstype" = ntfs ]; then
             # see http://www.freedesktop.org/wiki/Software/systemd/RootStorageDaemons/
             ln -s ntfs-3g /usr/bin/@ntfs-3g
-            @ntfs-3g "$rootpart" /new_rootpart -o dmask=022,fmask=133
+            @ntfs-3g "$rootpart" /rootpart -o dmask=022,fmask=133
         else
-            mount ${partfstype:+-t $partfstype} "$rootpart" /new_rootpart
+            mount ${partfstype:+-t $partfstype} "$rootpart" /rootpart
         fi
         modprobe loop
         root=`losetup -f`
-        if ! losetup ${offset:+-o $offset} "$root" /new_rootpart/"$rootimg"; then
-             err "Unable to set up root '$root' as loop of '/new_rootpart/$rootimg'"
+        if ! losetup ${offset:+-o $offset} "$root" /rootpart/"$rootimg"; then
+             err "Unable to set up root '$root' as loop of '/rootpart/$rootimg'"
              launch_interactive_shell
         fi
         ;;
     esac
+}
+
+run_latehook() {
+	test -d /rootpart && test -d /new_root/rootpart &&
+		mount --bind /rootpart /new_root/rootpart
 }
